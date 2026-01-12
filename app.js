@@ -5,6 +5,12 @@ const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 const US_STATES_GEOJSON_URL =
   "https://raw.githubusercontent.com/python-visualization/folium/master/examples/data/us-states.json";
 
+// Force default view to Continental US (CONUS)
+const CONUS_BOUNDS = [
+  [24.396308, -124.848974], // SW
+  [49.384358,  -66.885444]  // NE
+];
+
 // ====== HELPERS ======
 function parseCSV(text) {
   // Minimal CSV parser that handles quoted commas
@@ -130,8 +136,11 @@ function colorForSectorId(sectorId) {
 
 // ====== MAIN ======
 (async function main() {
-  // Map init
-  const map = L.map("map", { zoomSnap: 0.25 }).setView([39.5, -98.35], 4);
+  // Map init (no setView; we will fit to CONUS after layer load)
+  const map = L.map("map", {
+    zoomSnap: 0.25,
+    worldCopyJump: false
+  });
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 10,
@@ -209,8 +218,6 @@ function colorForSectorId(sectorId) {
   const geoLayer = L.geoJSON(statesGeo, {
     style: (feature) => {
       const name = (feature.properties.name || "").trim();
-      // This GeoJSON uses full state names, not abbreviations.
-      // We'll translate full name -> abbrev using a small map below.
       const abbrev = STATE_NAME_TO_ABBREV[name] || "";
       const sector = stateToSector.get(abbrev);
       const sectorId = sector?.sector_id || "";
@@ -261,7 +268,6 @@ function colorForSectorId(sectorId) {
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.disableScrollPropagation(div);
 
-    // Build a list of unique sectors from sectorById
     const sectors = Array.from(sectorById.values())
       .filter(s => (s.sector_id || "").trim().length > 0)
       .sort((a, b) => (a.sector_name || a.sector_id).localeCompare(b.sector_name || b.sector_id));
@@ -289,8 +295,11 @@ function colorForSectorId(sectorId) {
 
   legend.addTo(map);
 
-  // Fit to US bounds
-  map.fitBounds(geoLayer.getBounds(), { padding: [10, 10] });
+  // Force default view to Continental US (and keep users from drifting to the world view)
+  map.fitBounds(CONUS_BOUNDS, { padding: [20, 20], maxZoom: 6 });
+  map.setMaxBounds(CONUS_BOUNDS);
+  map.options.maxBoundsViscosity = 1.0;
+
 })().catch(err => {
   console.error(err);
   alert(err.message || "Error loading map.");
