@@ -234,6 +234,48 @@ function hashToHsl(str) {
       });
     }
   }).addTo(map);
+// ====== LEGEND (auto-built from sheet sectors) ======
+const legend = L.control({ position: "bottomleft" });
+
+legend.onAdd = function () {
+  const div = L.DomUtil.create("div", "legend");
+
+  // Prevent map drag/zoom when interacting with the legend
+  L.DomEvent.disableClickPropagation(div);
+  L.DomEvent.disableScrollPropagation(div);
+
+  // Build a list of unique sectors from sectorById
+  // sectorById: Map(sector_id -> sector object)
+  const sectors = Array.from(sectorById.values())
+    .filter(s => (s.sector_id || "").trim().length > 0)
+    .sort((a, b) => (a.sector_name || a.sector_id).localeCompare(b.sector_name || b.sector_id));
+
+  const itemsHtml = sectors.map(s => {
+    const id = (s.sector_id || "").trim();
+    const name = (s.sector_name || "").trim() || id;
+
+    // IMPORTANT: use the SAME color function used for fills
+    // If you're using palette: colorForSectorId(id)
+    // If you're using HSL hash: hashToHsl(id)
+    const color = (typeof colorForSectorId === "function") ? colorForSectorId(id) : hashToHsl(id);
+
+    return `
+      <div class="item">
+        <span class="swatch" style="background:${color}"></span>
+        <span><b>${escapeHTML(name)}</b> <span class="muted">(${escapeHTML(id)})</span></span>
+      </div>
+    `;
+  }).join("");
+
+  div.innerHTML = `
+    <div class="title">Sectors</div>
+    ${itemsHtml || `<div class="muted">No sectors found in sheet.</div>`}
+  `;
+
+  return div;
+};
+
+legend.addTo(map);
 
   // Fit to US bounds
   map.fitBounds(geoLayer.getBounds(), { padding: [10, 10] });
