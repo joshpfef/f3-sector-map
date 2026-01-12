@@ -101,14 +101,16 @@ function escapeAttr(str) {
 }
 
 function hashToHsl(str) {
-  // stable-ish coloring by sector_id
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  const sat = 65;
-  const light = 55;
-  return `hsl(${hue} ${sat}% ${light}%)`;
+  const s = (str || "").trim();
+  let h = 2166136261; // FNV-ish
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const hue = (h >>> 0) % 360;
+  return `hsl(${hue}, 80%, 55%)`;
 }
+
 
 // ====== MAIN ======
 (async function main() {
