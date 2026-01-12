@@ -3,7 +3,7 @@ const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 
 // US States GeoJSON (includes Puerto Rico sometimes; we’ll ignore non-states gracefully)
 const US_STATES_GEOJSON_URL =
-  "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/us-states.json";
+  "https://raw.githubusercontent.com/python-visualization/folium/master/examples/data/us-states.json";
 
 // ====== HELPERS ======
 function parseCSV(text) {
