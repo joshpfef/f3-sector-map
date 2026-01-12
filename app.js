@@ -100,17 +100,33 @@ function escapeAttr(str) {
   return escapeHTML(str).replace(/"/g, "&quot;");
 }
 
-function hashToHsl(str) {
+// ====== GUARANTEED DISTINCT COLORS ======
+const SECTOR_COLORS = [
+  "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+  "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
+  "#bcbd22", "#17becf", "#aec7e8", "#ffbb78",
+  "#98df8a", "#ff9896", "#c5b0d5", "#c49c94",
+  "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5",
+  "#393b79", "#637939", "#8c6d31", "#843c39",
+  "#7b4173", "#3182bd", "#31a354", "#756bb1"
+];
+
+function stableHash(str) {
   const s = (str || "").trim();
-  let h = 2166136261; // FNV-ish
+  let h = 2166136261; // FNV-1a base
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
-  const hue = (h >>> 0) % 360;
-  return `hsl(${hue}, 80%, 55%)`;
+  return h >>> 0;
 }
 
+function colorForSectorId(sectorId) {
+  const id = (sectorId || "").trim();
+  if (!id) return "rgba(200,200,200,0.45)";
+  const idx = stableHash(id) % SECTOR_COLORS.length;
+  return SECTOR_COLORS[idx];
+}
 
 // ====== MAIN ======
 (async function main() {
@@ -166,7 +182,7 @@ function hashToHsl(str) {
   const sectorLayers = new Map(); // sector_id -> Set(layer)
 
   function baseStyleForSector(sectorId) {
-    const fill = sectorId ? hashToHsl(sectorId) : "rgba(200,200,200,0.45)";
+    const fill = sectorId ? colorForSectorId(sectorId) : "rgba(200,200,200,0.45)";
     return {
       weight: 1,
       color: "rgba(255,255,255,0.85)",
@@ -234,48 +250,44 @@ function hashToHsl(str) {
       });
     }
   }).addTo(map);
-// ====== LEGEND (auto-built from sheet sectors) ======
-const legend = L.control({ position: "bottomleft" });
 
-legend.onAdd = function () {
-  const div = L.DomUtil.create("div", "legend");
+  // ====== LEGEND (auto-built from sheet sectors) ======
+  const legend = L.control({ position: "bottomleft" });
 
-  // Prevent map drag/zoom when interacting with the legend
-  L.DomEvent.disableClickPropagation(div);
-  L.DomEvent.disableScrollPropagation(div);
+  legend.onAdd = function () {
+    const div = L.DomUtil.create("div", "legend");
 
-  // Build a list of unique sectors from sectorById
-  // sectorById: Map(sector_id -> sector object)
-  const sectors = Array.from(sectorById.values())
-    .filter(s => (s.sector_id || "").trim().length > 0)
-    .sort((a, b) => (a.sector_name || a.sector_id).localeCompare(b.sector_name || b.sector_id));
+    // Prevent map drag/zoom when interacting with the legend
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
 
-  const itemsHtml = sectors.map(s => {
-    const id = (s.sector_id || "").trim();
-    const name = (s.sector_name || "").trim() || id;
+    // Build a list of unique sectors from sectorById
+    const sectors = Array.from(sectorById.values())
+      .filter(s => (s.sector_id || "").trim().length > 0)
+      .sort((a, b) => (a.sector_name || a.sector_id).localeCompare(b.sector_name || b.sector_id));
 
-    // IMPORTANT: use the SAME color function used for fills
-    // If you're using palette: colorForSectorId(id)
-    // If you're using HSL hash: hashToHsl(id)
-    const color = (typeof colorForSectorId === "function") ? colorForSectorId(id) : hashToHsl(id);
+    const itemsHtml = sectors.map(s => {
+      const id = (s.sector_id || "").trim();
+      const name = (s.sector_name || "").trim() || id;
+      const color = colorForSectorId(id);
 
-    return `
-      <div class="item">
-        <span class="swatch" style="background:${color}"></span>
-        <span><b>${escapeHTML(name)}</b> <span class="muted">(${escapeHTML(id)})</span></span>
-      </div>
+      return `
+        <div class="item">
+          <span class="swatch" style="background:${color}"></span>
+          <span><b>${escapeHTML(name)}</b> <span class="muted">(${escapeHTML(id)})</span></span>
+        </div>
+      `;
+    }).join("");
+
+    div.innerHTML = `
+      <div class="title">Sectors</div>
+      ${itemsHtml || `<div class="muted">No sectors found in sheet.</div>`}
     `;
-  }).join("");
 
-  div.innerHTML = `
-    <div class="title">Sectors</div>
-    ${itemsHtml || `<div class="muted">No sectors found in sheet.</div>`}
-  `;
+    return div;
+  };
 
-  return div;
-};
-
-legend.addTo(map);
+  legend.addTo(map);
 
   // Fit to US bounds
   map.fitBounds(geoLayer.getBounds(), { padding: [10, 10] });
