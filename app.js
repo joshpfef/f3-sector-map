@@ -224,41 +224,43 @@ function colorForSectorId(sectorId) {
       return baseStyleForSector(sectorId);
     },
     onEachFeature: (feature, layer) => {
-      const name = (feature.properties.name || "").trim();
-      const abbrev = STATE_NAME_TO_ABBREV[name] || "";
-      const sector = stateToSector.get(abbrev);
+  const name = (feature.properties.name || "").trim();
+  const abbrev = STATE_NAME_TO_ABBREV[name] || "";
+  const sector = stateToSector.get(abbrev);
 
-      const sectorId = sector?.sector_id || "";
-      if (sectorId) {
-        if (!sectorLayers.has(sectorId)) sectorLayers.set(sectorId, new Set());
-        sectorLayers.get(sectorId).add(layer);
-      }
+  const sectorId = sector?.sector_id || "";
+  if (sectorId) {
+    if (!sectorLayers.has(sectorId)) sectorLayers.set(sectorId, new Set());
+    sectorLayers.get(sectorId).add(layer);
+  }
 
-      // Tooltip content: sector card (same for all states in sector)
-      const tooltipHTML = sectorId && sectorById.get(sectorId)
-        ? buildSectorCard(sectorById.get(sectorId))
-        : `<div style="padding:10px; font-family:system-ui,Segoe UI,Roboto,Arial; font-size:13px;">
-             <b>${escapeHTML(name)}</b><br/>
-             <span class="muted">No sector assigned</span>
-           </div>`;
+  // Tooltip content
+  const tooltipHTML = sectorId && sectorById.get(sectorId)
+    ? buildSectorCard(sectorById.get(sectorId))
+    : `<div style="padding:10px; font-family:system-ui,Segoe UI,Roboto,Arial; font-size:13px;">
+         <b>${escapeHTML(name)}</b><br/>
+         <span class="muted">No sector assigned</span>
+       </div>`;
 
-      layer.bindTooltip(tooltipHTML, {
-        className: "sector-tooltip",
-        direction: "auto",
-        sticky: false,
-        opacity: 1
-      });
+  layer.bindTooltip(tooltipHTML, {
+    className: "sector-tooltip",
+    direction: "auto",
+    sticky: false,
+    opacity: 1
+  });
 
-      layer.on("mouseover", () => {
-  layer.openTooltip();
-  if (sectorId) setSectorHighlight(sectorId, true);
-});
+  // Force only ONE tooltip at a time (this is the real fix)
+  layer.on("mouseover", function () {
+    map.closeTooltip(); // <-- KEY LINE
+    this.openTooltip();
+    if (sectorId) setSectorHighlight(sectorId, true);
+  });
 
-layer.on("mouseout", () => {
-  layer.closeTooltip();
-  if (sectorId) setSectorHighlight(sectorId, false);
-});
-    }
+  layer.on("mouseout", function () {
+    this.closeTooltip();
+    if (sectorId) setSectorHighlight(sectorId, false);
+  });
+}
   }).addTo(map);
 
   // ====== LEGEND (auto-built from sheet sectors) ======
