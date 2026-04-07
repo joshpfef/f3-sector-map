@@ -245,7 +245,7 @@ function colorForSectorId(sectorId) {
       layer.bindTooltip(tooltipHTML, {
         className: "sector-tooltip",
         direction: "auto",
-        sticky: true,
+        sticky: false,
         opacity: 1
       });
 
