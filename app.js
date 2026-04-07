@@ -250,11 +250,14 @@ function colorForSectorId(sectorId) {
       });
 
       layer.on("mouseover", () => {
-        if (sectorId) setSectorHighlight(sectorId, true);
-      });
-      layer.on("mouseout", () => {
-        if (sectorId) setSectorHighlight(sectorId, false);
-      });
+  layer.openTooltip();
+  if (sectorId) setSectorHighlight(sectorId, true);
+});
+
+layer.on("mouseout", () => {
+  layer.closeTooltip();
+  if (sectorId) setSectorHighlight(sectorId, false);
+});
     }
   }).addTo(map);
 
